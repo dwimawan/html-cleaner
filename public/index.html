@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HTML Remover - Bersihkan HTML dari Excel/CSV</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="app">
+    <header class="app__header">
+      <h1>HTML Remover</h1>
+      <p class="app__subtitle">Hapus HTML dari data Excel/CSV — paste atau upload, lalu <strong>Copy</strong> hasilnya ke Excel / Google Sheets.</p>
+    </header>
+
+    <!-- Input -->
+    <section class="card" id="inputSection">
+      <h2>1. Input Data</h2>
+
+      <div class="tabs" role="tablist">
+        <button type="button" class="tab tab--active" data-tab="paste" id="tabPaste">Paste</button>
+        <button type="button" class="tab" data-tab="upload" id="tabUpload">Upload File</button>
+      </div>
+
+      <div class="tab-panel" id="panelPaste">
+        <label class="field-label" for="pasteArea">Tempel data dari Excel / Google Sheets / CSV di sini:</label>
+        <textarea id="pasteArea" rows="8" placeholder="Salin data dari Excel/Google Sheets lalu Ctrl+V di sini...&#10;Atau tempel isi file CSV secara mentah."></textarea>
+      </div>
+
+      <div class="tab-panel tab-panel--hidden" id="panelUpload">
+        <div id="dropzone" class="dropzone">
+          <p>Tarik &amp; lepas file di sini, atau</p>
+          <button type="button" id="browseBtn" class="btn">Pilih File</button>
+          <input type="file" id="fileInput" accept=".xlsx,.xls,.csv,.tsv" hidden>
+          <p class="dropzone__hint">Format: .xlsx, .xls, .csv, .tsv &middot; maks. 50 MB</p>
+        </div>
+        <p id="fileInfo" class="file-info"></p>
+      </div>
+
+      <div class="field-row">
+        <label class="field-label" for="delimiter">Delimiter (untuk teks yang di-paste):</label>
+        <select id="delimiter">
+          <option value="auto">Auto-detect</option>
+          <option value="tab">Tab (paste dari Excel)</option>
+          <option value=",">Koma ( , )</option>
+          <option value=";">Titik koma ( ; )</option>
+          <option value="|">Pipe ( | )</option>
+        </select>
+      </div>
+
+      <div class="actions">
+        <button type="button" id="parseBtn" class="btn btn--primary" disabled>Proses Data</button>
+        <span id="parseStatus" class="status"></span>
+      </div>
+    </section>
+
+    <!-- Preview & selection -->
+    <section class="card" id="previewSection" hidden>
+      <h2>2. Preview &amp; Pilih Kolom</h2>
+      <div class="options">
+        <div class="field-row">
+          <label class="field-label" for="brMode">Cara render baris baru:</label>
+          <select id="brMode">
+            <option value="newline" selected>Pertahankan baris baru (enter)</option>
+            <option value="space">Jadi spasi (aman utk paste Excel)</option>
+          </select>
+        </div>
+        <label class="check">
+          <input type="checkbox" id="normalizeWs" checked>
+          Rapatkan spasi berlebih
+        </label>
+      </div>
+
+      <div class="preview-toolbar">
+        <button type="button" id="selectAllBtn" class="btn">Pilih Semua</button>
+        <button type="button" id="selectNoneBtn" class="btn">Batal Pilih</button>
+        <span id="gridInfo" class="status"></span>
+      </div>
+
+      <div class="table-wrap">
+        <table id="previewTable">
+          <thead></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Output -->
+    <section class="card" id="outputSection" hidden>
+      <h2>3. Copy Hasil</h2>
+      <div class="actions">
+        <button type="button" id="copyBtn" class="btn btn--primary">Copy ke Clipboard (TSV)</button>
+        <span id="copyStatus" class="status"></span>
+      </div>
+      <p class="hint" id="copyHint">Setelah di-copy, buka Excel / Google Sheets lalu <strong>Ctrl+V</strong>.</p>
+      <p class="hint">Kolom yang tidak dipilih akan disalin apa adanya (tidak dibersihkan).</p>
+      <div class="actions" id="cleanMoreWrap" hidden>
+        <button type="button" id="cleanMoreBtn" class="btn btn--primary">Clean More</button>
+      </div>
+    </section>
+  </main>
+
+  <script src="vendor/xlsx.full.min.js"></script>
+  <script src="vendor/papaparse.min.js"></script>
+  <script src="htmlCleaner.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

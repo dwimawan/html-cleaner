@@ -1,0 +1,38 @@
+# html-remover systemd unit template
+# Ubuntu 18.04 / systemd 237 compatible (no fancy options).
+#
+# 1) Salin file ke server:
+#    sudo cp deploy/html-remover.service /etc/systemd/system/html-remover.service
+#
+# 2) Sesuaikan WorkingDirectory & Environment jika path berbeda.
+#
+# 3) Aktifkan:
+#    sudo systemctl daemon-reload
+#    sudo systemctl enable --now html-remover
+#
+# 4) Cek:
+#    sudo systemctl status html-remover
+#    curl http://localhost:3000/api/health
+
+[Unit]
+Description=HTML Remover (Excel/CSV cleaner)
+After=network.target
+
+[Service]
+Type=simple
+# Ganti user sesuai akun yang menjalankan aplikasi di server prod
+User=www-data
+Group=www-data
+# Path absolut ke folder aplikasi di server prod
+WorkingDirectory=/opt/html-remover
+Environment=NODE_ENV=production
+Environment=PORT=3000
+Environment=MAX_FILE_MB=50
+ExecStart=/usr/bin/env node /opt/html-remover/server/index.js
+Restart=always
+RestartSec=3
+# Naikkan limit file descriptor agar aman saat banyak koneksi
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target
