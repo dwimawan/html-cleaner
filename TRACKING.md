@@ -43,7 +43,8 @@ Dokumen ini melacak progres eksekusi dari [PLAN.md](./PLAN.md). Diperbarui setia
   - preview 100 baris pertama + info total,
   - pilih kolom per kolom + "Pilih Semua" / "Batal Pilih",
   - opsi `brMode` & rapatkan spasi,
-  - copy TSV ke clipboard dengan fallback `execCommand('copy')` (untuk HTTP non-HTTPS) + kotak salin manual.
+  - copy TSV ke clipboard dengan fallback `execCommand('copy')` (untuk HTTP non-HTTPS) + kotak salin manual,
+  - download hasil sebagai XLSX (SheetJS, semua sel format teks `@`, sel > 32.767 karakter dipotong setelah konfirmasi) atau CSV (PapaParse `unparse`, UTF-8 BOM, tanpa batas panjang sel) untuk data besar.
 - [x] Struktur data: `grid` (mentah) + `cleaned` (hasil bersih); kolom tak dipilih disalin apa adanya.
 
 ### Tahap 5 — Test lokal ✅

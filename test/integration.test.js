@@ -109,6 +109,20 @@ test('GET /api/health returns ok', async function () {
   assert.strictEqual(res.json.ok, true);
 });
 
+test('GET /vendor/papaparse.min.js serves PapaParse', async function () {
+  var app = server.createApp();
+  var res = await request(app, 'GET', '/vendor/papaparse.min.js');
+  assert.strictEqual(res.status, 200);
+  assert.ok(res.text.indexOf('Papa') !== -1, 'body should contain PapaParse');
+});
+
+test('GET /vendor/xlsx.full.min.js serves SheetJS', async function () {
+  var app = server.createApp();
+  var res = await request(app, 'GET', '/vendor/xlsx.full.min.js');
+  assert.strictEqual(res.status, 200);
+  assert.ok(res.text.length > 1000, 'body should be the SheetJS bundle');
+});
+
 test('POST /api/clean with TSV upload', async function () {
   var app = server.createApp();
   var mp = multipartBody({ brMode: 'space', normalizeWhitespace: 'true' }, 'sample.tsv');

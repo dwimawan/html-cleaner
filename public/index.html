@@ -87,12 +87,16 @@
 
     <!-- Output -->
     <section class="card" id="outputSection" hidden>
-      <h2>3. Copy Hasil</h2>
+      <h2>3. Copy atau Download Hasil</h2>
       <div class="actions">
         <button type="button" id="copyBtn" class="btn btn--primary">Copy ke Clipboard (TSV)</button>
+        <button type="button" id="downloadXlsxBtn" class="btn">Download XLSX</button>
+        <button type="button" id="downloadCsvBtn" class="btn">Download CSV</button>
         <span id="copyStatus" class="status"></span>
+        <span id="downloadStatus" class="status"></span>
       </div>
       <p class="hint" id="copyHint">Setelah di-copy, buka Excel / Google Sheets lalu <strong>Ctrl+V</strong>.</p>
+      <p class="hint">Untuk data besar yang tidak bisa di-copy, gunakan <strong>Download XLSX</strong> atau <strong>Download CSV</strong>.</p>
       <p class="hint">Kolom yang tidak dipilih akan disalin apa adanya (tidak dibersihkan).</p>
       <div class="actions" id="cleanMoreWrap" hidden>
         <button type="button" id="cleanMoreBtn" class="btn btn--primary">Clean More</button>

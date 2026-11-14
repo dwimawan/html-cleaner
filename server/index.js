@@ -27,6 +27,16 @@ function createApp() {
     index: 'index.html'
   }));
 
+  // ---- Vendor libraries ------------------------------------------------------
+  // Served straight from node_modules so `npm start` works without the manual
+  // copy step that deploy/deploy.sh performs. public/vendor still wins if present.
+  app.get('/vendor/papaparse.min.js', function (req, res) {
+    sendVendor(res, path.join(__dirname, '..', 'node_modules', 'papaparse', 'papaparse.min.js'));
+  });
+  app.get('/vendor/xlsx.full.min.js', function (req, res) {
+    sendVendor(res, path.join(__dirname, '..', 'node_modules', 'xlsx', 'dist', 'xlsx.full.min.js'));
+  });
+
   // ---- Upload parsing --------------------------------------------------------
   var upload = multer({
     storage: multer.memoryStorage(),
@@ -62,6 +72,16 @@ function createApp() {
   });
 
   return app;
+}
+
+function sendVendor(res, filePath) {
+  res.sendFile(filePath, function (err) {
+    if (!err) return;
+    if (res.headersSent) return res.end();
+    res.status(404).type('text/plain').send(
+      'Vendor file tidak ditemukan: ' + path.basename(filePath) + '. Jalankan `npm install` dulu.'
+    );
+  });
 }
 
 function parseBufferToGrid(buffer, filename) {

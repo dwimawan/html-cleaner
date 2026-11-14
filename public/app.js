@@ -11,6 +11,7 @@
   var CLIENT_MAX_MB = 10; // files up to this size are parsed in-browser
   var PREVIEW_ROWS = 100;
   var MAX_FILE_MB = 50;
+  var EXCEL_CELL_MAX = 32767; // max characters Excel allows in one cell
 
   var state = {
     grid: null,        // 2D array of strings (rows of cells), raw values
@@ -35,6 +36,8 @@
       selectAllBtn: 'selectAllBtn', selectNoneBtn: 'selectNoneBtn',
       brMode: 'brMode', normalizeWs: 'normalizeWs',
       copyBtn: 'copyBtn', copyStatus: 'copyStatus', copyHint: 'copyHint',
+      downloadXlsxBtn: 'downloadXlsxBtn', downloadCsvBtn: 'downloadCsvBtn',
+      downloadStatus: 'downloadStatus',
       cleanMoreBtn: 'cleanMoreBtn', cleanMoreWrap: 'cleanMoreWrap'
     }).forEach(function (id) { el[id] = $(id); });
 
@@ -71,6 +74,8 @@
     el.selectAllBtn.addEventListener('click', function () { setAllCols(true); });
     el.selectNoneBtn.addEventListener('click', function () { setAllCols(false); });
     el.copyBtn.addEventListener('click', onCopy);
+    el.downloadXlsxBtn.addEventListener('click', function () { onDownload('xlsx'); });
+    el.downloadCsvBtn.addEventListener('click', function () { onDownload('csv'); });
     el.cleanMoreBtn.addEventListener('click', resetApp);
   }
 
@@ -330,20 +335,29 @@
       ' kolom \u00b7 dipilih: ' + count + ' kolom';
   }
 
-  // ---- Copy ---------------------------------------------------------------------
+  // ---- Copy / Download ---------------------------------------------------------
 
-  function onCopy() {
-    setStatus('copyStatus', 'Menyiapkan data...');
-    var lines = [];
+  // Rows used by copy & download: selected columns use cleaned values, the rest
+  // keep their raw values (same rule as the preview and copy feature).
+  function buildExportRows() {
+    var rows = [];
     for (var r = 0; r < state.grid.length; r++) {
       var cells = [];
       for (var c = 0; c < state.columns; c++) {
         var isSelected = !!state.selectedCols[c];
-        var val = isSelected ? (state.cleaned[r][c] || '') : (state.grid[r][c] || '');
-        cells.push(sanitizeForTSV(val));
+        var val = isSelected ? state.cleaned[r][c] : state.grid[r][c];
+        cells.push(val == null ? '' : String(val));
       }
-      lines.push(cells.join('\t'));
+      rows.push(cells);
     }
+    return rows;
+  }
+
+  function onCopy() {
+    setStatus('copyStatus', 'Menyiapkan data...');
+    var lines = buildExportRows().map(function (cells) {
+      return cells.map(sanitizeForTSV).join('\t');
+    });
     var tsv = lines.join('\n');
 
     copyToClipboard(tsv).then(function () {
@@ -351,11 +365,112 @@
       el.copyHint.hidden = false;
       el.cleanMoreWrap.hidden = false;
     }).catch(function (e) {
-      setStatus('copyStatus', 'Gagal menyalin otomatis: ' + e.message + '. Gunakan tombol cadangan.', true);
+      setStatus('copyStatus', 'Gagal menyalin otomatis: ' + e.message + '. Gunakan tombol Download atau salin manual.', true);
       el.copyHint.hidden = false;
       el.cleanMoreWrap.hidden = false;
       fallbackCopy(tsv);
     });
+  }
+
+  // Large datasets cannot always be copied to the clipboard; download instead.
+  function onDownload(format) {
+    var label = format === 'csv' ? 'CSV' : 'XLSX';
+    if (!state.grid || !state.cleaned) {
+      return setStatus('downloadStatus', 'Belum ada data untuk diunduh.', true);
+    }
+
+    setStatus('downloadStatus', 'Menyiapkan file ' + label + '...');
+    setDownloading(true);
+
+    // Yield so the status message renders before the (blocking) build starts.
+    setTimeout(function () {
+      try {
+        var rows = buildExportRows();
+        var filename = exportFileName(format);
+        var truncated = 0;
+        if (format === 'csv') {
+          // BOM keeps Excel from mangling non-ASCII characters.
+          downloadBlob('\ufeff' + Papa.unparse(rows), 'text/csv;charset=utf-8;', filename);
+        } else {
+          var wb = XLSX.utils.book_new();
+          var ws = XLSX.utils.aoa_to_sheet(rows);
+          truncated = forceTextCells(ws);
+          if (truncated > 0) {
+            var proceed = window.confirm(
+              'Ada ' + truncated + ' sel yang isinya melebihi ' + EXCEL_CELL_MAX +
+              ' karakter. Excel tidak bisa menyimpan lebih dari ' + EXCEL_CELL_MAX +
+              ' karakter per sel, jadi isinya akan dipotong.\n\n' +
+              'Klik OK untuk tetap download XLSX (dipotong), atau Cancel untuk memakai Download CSV (isi lengkap).'
+            );
+            if (!proceed) {
+              setStatus('downloadStatus', 'Download XLSX dibatalkan. Gunakan Download CSV agar isi sel tidak dipotong.', true);
+              return;
+            }
+          }
+          XLSX.utils.book_append_sheet(wb, ws, 'Data');
+          XLSX.writeFile(wb, filename);
+        }
+        setStatus('downloadStatus', 'File diunduh: ' + filename +
+          (truncated > 0 ? ' (' + truncated + ' sel dipotong ke ' + EXCEL_CELL_MAX + ' karakter)' : ''));
+        el.cleanMoreWrap.hidden = false;
+      } catch (e) {
+        setStatus('downloadStatus', 'Gagal membuat ' + label + ': ' + e.message, true);
+      } finally {
+        setDownloading(false);
+      }
+    }, 30);
+  }
+
+  // Force every populated cell to be a text cell, so Excel keeps values such as
+  // "00123", "1-2", "2026-11-14" or very long numbers exactly as they are
+  // instead of reinterpreting them as numbers/dates.
+  // Also truncates values longer than Excel's per-cell limit and returns how
+  // many cells were truncated (Excel hard limit: 32,767 characters/cell).
+  function forceTextCells(ws) {
+    var truncated = 0;
+    Object.keys(ws).forEach(function (addr) {
+      if (addr.charAt(0) === '!') return; // !ref, !cols, !rows, ...
+      var cell = ws[addr];
+      var text = cell.v == null ? '' : String(cell.v);
+      if (text.length > EXCEL_CELL_MAX) {
+        text = text.slice(0, EXCEL_CELL_MAX);
+        truncated++;
+      }
+      cell.t = 's';
+      cell.z = '@';
+      cell.v = text;
+      delete cell.w;
+    });
+    return truncated;
+  }
+
+  function setDownloading(busy) {
+    el.downloadXlsxBtn.disabled = busy;
+    el.downloadCsvBtn.disabled = busy;
+  }
+
+  function exportFileName(ext) {
+    var base = 'data-bersih';
+    if (state.pickedFile && state.pickedFile.name) {
+      base = state.pickedFile.name.replace(/\.[^.\\/]+$/, '') + '-bersih';
+    }
+    var d = new Date();
+    function pad(n) { return (n < 10 ? '0' : '') + n; }
+    var stamp = d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) +
+      '-' + pad(d.getHours()) + pad(d.getMinutes());
+    return base + '-' + stamp + '.' + ext;
+  }
+
+  function downloadBlob(text, mime, filename) {
+    var blob = new Blob([text], { type: mime });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 0);
   }
 
   function resetApp() {
@@ -373,7 +488,9 @@
     el.cleanMoreWrap.hidden = true;
     el.copyHint.hidden = false;
     setStatus('copyStatus', '');
+    setStatus('downloadStatus', '');
     setStatus('parseStatus', '');
+    setDownloading(false);
     switchTab('paste');
     el.pasteArea.focus();
     window.scrollTo({ top: 0, behavior: 'smooth' });

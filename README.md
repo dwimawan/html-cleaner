@@ -9,6 +9,7 @@ Web tool internal satu halaman untuk **menghapus HTML** dari data Excel/CSV, lal
 - **Pilih kolom** mana saja yang dibersihkan, atau "Pilih Semua".
 - Bersihkan HTML: hapus semua tag, decode entities (`&amp;` → `&`, `&nbsp;` → spasi), opsi render `<br>`/block jadi spasi atau baris baru, opsi rapatkan spasi.
 - **Copy hasil** sebagai TSV ke clipboard (dengan fallback untuk akses HTTP non-HTTPS).
+- **Download hasil** sebagai `.xlsx` (semua sel bertipe **teks**, jadi `00123`, `1-2`, atau tanggal tidak diubah Excel) atau `.csv` — berguna untuk data besar yang tidak muat di clipboard. Sel yang melebihi batas 32.767 karakter per sel milik Excel akan dikonfirmasi lalu dipotong; pakai CSV bila butuh isi lengkap.
 
 ## Arsitektur
 
